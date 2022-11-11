@@ -1,0 +1,69 @@
+version: '3.9'
+services:
+  db:
+    image: postgres
+    container_name: db_6_03
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - ./imports:/docker-entrypoint-initdb.d
+    labels:
+      - traefik.port=5432
+
+  express_app:
+    build: 
+      context: ./express_app
+      network: host
+    container_name: express_app
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+    labels:
+      - traefik.port=3000
+      - traefik.enable=true
+      - traefik.priority=1
+      - traefik.http.routers.express_app.rule=Host("test.com")
+      
+  flask_app:
+    build: 
+      context: ./flask_app
+      network: host
+    container_name: flask_app
+    ports:
+      - "5000:5000"
+    depends_on:
+      - db
+    labels:
+      - traefik.port=5000
+      - traefik.enable=true
+      - traefik.priority=10
+      - traefik.http.routers.flask_app.rule=Host(`test.com`) && PathPrefix(`/cars`)
+  
+  reverse-proxy:
+    image: traefik:latest
+    container_name: traefik
+    restart: always
+    ports:
+      - 80:80
+      - 8080:8080
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+
+  # dbms:
+  #   image: adminer:latest
+  #   restart: always
+  #   ports:
+  #     - "8081:8080"
+  #   depends_on:
+  #     - db
+  
+
+    
